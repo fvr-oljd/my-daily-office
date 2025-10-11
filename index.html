@@ -108,8 +108,8 @@
             text-transform: uppercase;
             letter-spacing: 0.08em;
             text-align: center;
-            margin-bottom: 1.5rem;
-            margin-top: 3rem;
+            margin-bottom: 1.25rem;
+            margin-top: 2rem;
             color: var(--text-primary);
         }
 
@@ -174,7 +174,7 @@
 
         .section-divider {
             border-color: var(--border-color);
-            margin: 3rem 0 2.5rem 0;
+            margin: 2rem 0 1.75rem 0;
         }
 
         .nav-button {
@@ -257,6 +257,150 @@
 
         const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+        // Legacy TXT file parsers (for backward compatibility)
+        const parseLegacyDevotional = (text) => {
+            // This converts the old TXT format to JSON array format
+            const lines = text.split('\n');
+            const devotionals = [];
+            const datePattern = /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d+)\s+(AM|PM)$/;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const match = lines[i].trim().match(datePattern);
+                if (match) {
+                    const monthName = match[1];
+                    const day = parseInt(match[2]);
+                    const month = MONTH_NAMES.indexOf(monthName) + 1;
+                    const time = match[3] === 'AM' ? 'am' : 'pm';
+                    
+                    let content = [];
+                    for (let j = i + 1; j < lines.length; j++) {
+                        if (datePattern.test(lines[j].trim())) break;
+                        content.push(lines[j]);
+                    }
+                    
+                    const fullText = content.join('\n').trim();
+                    const textLines = fullText.split('\n').filter(l => l.trim());
+                    
+                    devotionals.push({
+                        date: `${month}-${day}`,
+                        time: time,
+                        month: month,
+                        day: day,
+                        keyverse: textLines[0] || '',
+                        body: textLines.slice(1).join('\n\n')
+                    });
+                }
+            }
+            return devotionals;
+        };
+
+        const parseLegacyOffice = (text) => {
+            // Convert old office.txt to JSON structure
+            const result = {
+                dailyFocus: {},
+                collects: {
+                    thanksgiving: { morning: {}, evening: {} },
+                    forgiveness: { morning: {}, evening: {} },
+                    meditation: { morning: {}, evening: {} },
+                    benediction: { morning: {}, evening: {} }
+                }
+            };
+            
+            const lines = text.split('\n');
+            
+            // Parse daily focus for each day
+            DAY_NAMES.forEach(day => {
+                const focusPattern = `${day} Focus:`;
+                let focusIndex = -1;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].includes(focusPattern)) {
+                        focusIndex = i;
+                        break;
+                    }
+                }
+                
+                if (focusIndex >= 0) {
+                    const titleMatch = lines[focusIndex].match(/Focus:\s*(.+)/);
+                    result.dailyFocus[day] = {
+                        title: titleMatch ? titleMatch[1].trim() : day,
+                        morning: [],
+                        evening: []
+                    };
+                    
+                    for (let i = focusIndex + 1; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (line.includes('Focus:')) break;
+                        
+                        if (line.startsWith('MORNING -') || line.startsWith('EVENING -')) {
+                            const period = line.startsWith('MORNING') ? 'morning' : 'evening';
+                            const title = line.substring(period === 'morning' ? 10 : 10);
+                            
+                            let prayerText = [];
+                            for (let j = i + 1; j < lines.length; j++) {
+                                const nextLine = lines[j].trim();
+                                if (nextLine.startsWith('MORNING') || nextLine.startsWith('EVENING') || nextLine.includes('Focus:')) break;
+                                if (nextLine) prayerText.push(nextLine);
+                            }
+                            
+                            const fullText = prayerText.join(' ');
+                            const refMatch = fullText.match(/\(([^)]+)\)$/);
+                            
+                            result.dailyFocus[day][period].push({
+                                title: title.trim(),
+                                text: refMatch ? fullText.substring(0, fullText.lastIndexOf('(')).trim() : fullText,
+                                reference: refMatch ? refMatch[1] : ''
+                            });
+                        }
+                    }
+                }
+            });
+            
+            // Parse collects
+            const collectSections = ['Thanksgiving', 'Forgiveness', 'Meditation', 'Benediction'];
+            collectSections.forEach(section => {
+                const sectionKey = section.toLowerCase();
+                let sectionIndex = -1;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].trim() === section) {
+                        sectionIndex = i;
+                        break;
+                    }
+                }
+                
+                if (sectionIndex >= 0) {
+                    for (let i = sectionIndex + 1; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (collectSections.includes(line)) break;
+                        
+                        if (line.startsWith('MORNING -') || line.startsWith('EVENING -')) {
+                            const period = line.startsWith('MORNING') ? 'morning' : 'evening';
+                            const title = line.substring(10).trim();
+                            
+                            let prayerText = [];
+                            for (let j = i + 1; j < lines.length; j++) {
+                                const nextLine = lines[j].trim();
+                                if (nextLine.startsWith('MORNING') || nextLine.startsWith('EVENING') || collectSections.includes(nextLine)) break;
+                                if (nextLine) prayerText.push(nextLine);
+                            }
+                            
+                            const fullText = prayerText.join(' ');
+                            const refMatch = fullText.match(/\(([^)]+)\)$/);
+                            
+                            result.collects[sectionKey][period] = {
+                                title: title,
+                                text: refMatch ? fullText.substring(0, fullText.lastIndexOf('(')).trim() : fullText,
+                                reference: refMatch ? refMatch[1] : ''
+                            };
+                        }
+                    }
+                }
+            });
+            
+            return result;
+        };
+
         // Utility functions
         const getDayOfWeek = (dateStr) => {
             const date = new Date(dateStr + 'T00:00:00');
@@ -336,25 +480,48 @@
 
             const loadFiles = async () => {
                 try {
-                    const [devotionalRes, officeRes] = await Promise.all([
-                        fetch('devotional.json'),
-                        fetch('office.json')
-                    ]);
+                    // Try JSON first, fall back to TXT if needed
+                    let devotionalData, officeData;
                     
-                    if (!devotionalRes.ok || !officeRes.ok) {
-                        throw new Error('Failed to load content files');
+                    try {
+                        const [devotionalRes, officeRes] = await Promise.all([
+                            fetch('devotional.json'),
+                            fetch('office.json')
+                        ]);
+                        
+                        if (devotionalRes.ok && officeRes.ok) {
+                            devotionalData = await devotionalRes.json();
+                            officeData = await officeRes.json();
+                        } else {
+                            throw new Error('JSON files not found');
+                        }
+                    } catch (jsonError) {
+                        console.log('JSON files not found, trying TXT files...', jsonError);
+                        // Fall back to old TXT format
+                        const [devotionalRes, officeRes] = await Promise.all([
+                            fetch('devotional.txt'),
+                            fetch('office.txt')
+                        ]);
+                        
+                        if (!devotionalRes.ok || !officeRes.ok) {
+                            throw new Error('Neither JSON nor TXT files found');
+                        }
+                        
+                        const devotionalText = await devotionalRes.text();
+                        const officeText = await officeRes.text();
+                        
+                        // Parse TXT to JSON structure (legacy support)
+                        devotionalData = parseLegacyDevotional(devotionalText);
+                        officeData = parseLegacyOffice(officeText);
                     }
                     
-                    const devotionalJson = await devotionalRes.json();
-                    const officeJson = await officeRes.json();
-                    
-                    setDevotionalData(devotionalJson);
-                    setOfficeData(officeJson);
+                    setDevotionalData(devotionalData);
+                    setOfficeData(officeData);
                 } catch (err) {
                     console.error('Error loading files:', err);
                     setError({
                         title: 'Failed to load content files',
-                        message: 'Please check your internet connection and refresh the page.',
+                        message: 'Please ensure devotional.json and office.json are in the same folder as index.html.',
                         technical: err.message
                     });
                 }
@@ -379,9 +546,18 @@
                 
                 if (!entry) return null;
                 
+                // Parse the body to separate the date header from actual content
+                const bodyLines = (entry.body || '').split('\n').filter(line => line.trim());
+                
+                // Remove the first line if it's a date header (e.g., "January 1st — Morning Reading")
+                const firstLine = bodyLines[0] || '';
+                const isDateHeader = /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d+/.test(firstLine);
+                
+                const contentStart = isDateHeader ? 1 : 0;
+                
                 return {
                     title: entry.keyverse || '',
-                    text: entry.body || ''
+                    text: bodyLines.slice(contentStart).join('\n\n')
                 };
             };
 
@@ -426,9 +602,12 @@
             }, [selectedDate, timeOfDay, devotionalData, officeData]);
 
             const changeDate = (delta) => {
-                const current = new Date(selectedDate + 'T00:00:00');
+                const current = new Date(selectedDate);
                 current.setDate(current.getDate() + delta);
-                setSelectedDate(current.toISOString().split('T')[0]);
+                const year = current.getFullYear();
+                const month = String(current.getMonth() + 1).padStart(2, '0');
+                const day = String(current.getDate()).padStart(2, '0');
+                setSelectedDate(`${year}-${month}-${day}`);
             };
 
             const renderPrayerItem = (prayer, index) => {
@@ -453,7 +632,7 @@
                 if (!prayer) return null;
                 
                 return (
-                    <div className="mb-12">
+                    <div className="mb-8">
                         <h2 style={{ fontSize: FONT_SIZES[fontSize].h2 }}>{title}</h2>
                         {renderPrayerItem(prayer, 0)}
                     </div>
@@ -464,7 +643,7 @@
                 if (!focusData || !focusData.prayers || focusData.prayers.length === 0) return null;
                 
                 return (
-                    <div className="mb-12">
+                    <div className="mb-8">
                         <h2 style={{ fontSize: FONT_SIZES[fontSize].h2 }}>
                             {focusData.title} Focus
                         </h2>
@@ -477,27 +656,27 @@
 
             return (
                 <div className="min-h-screen">
-                    <div className="max-w-4xl mx-auto px-6 lg:px-8 py-12">
-                        <header className="text-center pt-8 pb-12">
-                            <h1 className="header-font text-5xl md:text-6xl font-bold mb-2 tracking-tight">
+                    <div className="max-w-4xl mx-auto px-4 lg:px-8 py-8">
+                        <header className="text-center pt-4 pb-6">
+                            <h1 className="header-font text-4xl md:text-5xl font-bold mb-1 tracking-tight">
                                 Daily Office
                             </h1>
-                            <p className="header-font text-lg italic" style={{ color: 'var(--text-secondary)' }}>
+                            <p className="header-font text-base md:text-lg italic" style={{ color: 'var(--text-secondary)' }}>
                                 A rhythm of prayer & devotion
                             </p>
                             {!isOnline && (
-                                <div className="mt-4 flex justify-center">
+                                <div className="mt-3 flex justify-center">
                                     <span className="offline-badge">Offline Mode</span>
                                 </div>
                             )}
                         </header>
 
-                        <div className="sticky top-0 z-10 py-6 sticky-controls mb-10">
-                            <div className="flex flex-col gap-4 items-center justify-center controls">
-                                <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="sticky top-0 z-10 py-3 sticky-controls mb-6">
+                            <div className="flex flex-col gap-2.5 items-center justify-center controls">
+                                <div className="flex items-center gap-2 w-full">
                                     <button
                                         onClick={() => changeDate(-1)}
-                                        className="nav-button px-4 py-2.5 text-base font-medium rounded-lg"
+                                        className="nav-button px-3 py-2 text-sm font-medium rounded-lg flex-shrink-0"
                                         aria-label="Previous day"
                                     >
                                         ← Prev
@@ -507,7 +686,7 @@
                                         type="date"
                                         value={selectedDate}
                                         onChange={(e) => setSelectedDate(e.target.value)}
-                                        className="flex-1 md:flex-initial px-4 py-2.5 text-base rounded-lg focus:ring-2 focus:ring-offset-2 transition-all font-medium shadow-sm outline-none"
+                                        className="flex-1 px-3 py-2 text-sm rounded-lg focus:ring-2 focus:ring-offset-2 transition-all font-medium shadow-sm outline-none"
                                         style={{
                                             backgroundColor: 'var(--bg-secondary)',
                                             color: 'var(--text-primary)',
@@ -517,17 +696,17 @@
                                     
                                     <button
                                         onClick={() => changeDate(1)}
-                                        className="nav-button px-4 py-2.5 text-base font-medium rounded-lg"
+                                        className="nav-button px-3 py-2 text-sm font-medium rounded-lg flex-shrink-0"
                                         aria-label="Next day"
                                     >
                                         Next →
                                     </button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 w-full md:w-auto">
+                                <div className="flex gap-2 w-full">
                                     <button
                                         onClick={() => setTimeOfDay('morning')}
-                                        className="px-6 py-2.5 text-base font-medium rounded-lg transition-all"
+                                        className="flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all"
                                         style={{
                                             backgroundColor: timeOfDay === 'morning' ? 'var(--accent-color)' : 'var(--bg-secondary)',
                                             color: timeOfDay === 'morning' ? 'var(--bg-secondary)' : 'var(--text-primary)',
@@ -539,7 +718,7 @@
                                     </button>
                                     <button
                                         onClick={() => setTimeOfDay('evening')}
-                                        className="px-6 py-2.5 text-base font-medium rounded-lg transition-all"
+                                        className="flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all"
                                         style={{
                                             backgroundColor: timeOfDay === 'evening' ? 'var(--accent-color)' : 'var(--bg-secondary)',
                                             color: timeOfDay === 'evening' ? 'var(--bg-secondary)' : 'var(--text-primary)',
@@ -551,12 +730,12 @@
                                     </button>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-2 w-full md:w-auto">
+                                <div className="flex gap-2 w-full">
                                     {['small', 'medium', 'large'].map(size => (
                                         <button
                                             key={size}
                                             onClick={() => setFontSize(size)}
-                                            className="px-5 py-2 text-sm font-medium rounded-lg transition-all capitalize"
+                                            className="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-all capitalize"
                                             style={{
                                                 backgroundColor: fontSize === size ? 'var(--accent-color)' : 'var(--bg-secondary)',
                                                 color: fontSize === size ? 'var(--bg-secondary)' : 'var(--text-primary)',
@@ -592,12 +771,12 @@
                             )}
 
                             {!loading && !error && officeContent && (
-                                <div className="content-card rounded-xl p-8 md:p-12 fade-in">
-                                    <div className="text-center mb-12 pb-8" style={{ borderBottom: `1px solid var(--border-color)` }}>
-                                        <h1 className="header-font text-4xl md:text-5xl font-bold mb-2">
+                                <div className="content-card rounded-xl p-6 md:p-10 fade-in">
+                                    <div className="text-center mb-10 pb-6" style={{ borderBottom: `1px solid var(--border-color)` }}>
+                                        <h1 className="header-font text-3xl md:text-4xl font-bold mb-2">
                                             {timeOfDay === 'morning' ? 'Morning' : 'Evening'} Prayer
                                         </h1>
-                                        <p className="header-font font-medium text-lg italic mb-2" style={{ color: 'var(--text-secondary)' }}>
+                                        <p className="header-font font-medium text-base md:text-lg italic mb-2" style={{ color: 'var(--text-secondary)' }}>
                                             {formatDate(selectedDate)}
                                         </p>
                                         {readingTime > 0 && (
@@ -620,7 +799,7 @@
                                         
                                         <hr className="section-divider" />
 
-                                        <div className="mb-12">
+                                        <div className="mb-8">
                                             <h2 style={{ fontSize: FONT_SIZES[fontSize].h2 }}>
                                                 Spurgeon's Morning & Evening
                                             </h2>
