@@ -204,12 +204,6 @@
             border-radius: 9999px;
         }
 
-        .reading-time {
-            color: var(--text-tertiary);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.875rem;
-        }
-
         /* Print Styles */
         @media print {
             .controls, header, footer, .nav-button, .sticky-controls {
@@ -412,13 +406,6 @@
             return `${getDayOfWeek(dateStr)}, ${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
         };
 
-        const estimateReadingTime = (content) => {
-            if (!content) return 0;
-            const text = JSON.stringify(content);
-            const words = text.split(/\s+/).length;
-            return Math.ceil(words / 200); // Average reading speed: 200 words/min
-        };
-
         // Local storage utilities
         const loadFromStorage = (key, defaultValue) => {
             try {
@@ -545,20 +532,24 @@
                 const entry = data.find(d => d.date === key && d.time === timeKey);
                 
                 if (!entry) return null;
-                
-                // Parse the body to separate the date header from actual content
+
+                // **FIX START**
+                // 1. Get all non-empty lines from the body
                 const bodyLines = (entry.body || '').split('\n').filter(line => line.trim());
                 
-                // Remove the first line if it's a date header (e.g., "January 1st — Morning Reading")
-                const firstLine = bodyLines[0] || '';
-                const isDateHeader = /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d+/.test(firstLine);
+                // 2. The first line is the date header (e.g., "January 1st..."), the second is the repeated keyverse.
+                //    We slice from the third line to get only the main devotional paragraphs.
+                const devotionalParagraphs = bodyLines.slice(2);
                 
-                const contentStart = isDateHeader ? 1 : 0;
-                
+                // 3. Join the paragraphs into a single string with spaces, then replace any multiple whitespace
+                //    characters with a single space to form one continuous paragraph.
+                const singleParagraphText = devotionalParagraphs.join(' ').replace(/\s\s+/g, ' ').trim();
+
                 return {
                     title: entry.keyverse || '',
-                    text: bodyLines.slice(contentStart).join('\n\n')
+                    text: singleParagraphText
                 };
+                // **FIX END**
             };
 
             useEffect(() => {
@@ -651,8 +642,6 @@
                     </div>
                 );
             };
-
-            const readingTime = officeContent ? estimateReadingTime(officeContent) : 0;
 
             return (
                 <div className="min-h-screen">
@@ -779,11 +768,6 @@
                                         <p className="header-font font-medium text-base md:text-lg italic mb-2" style={{ color: 'var(--text-secondary)' }}>
                                             {formatDate(selectedDate)}
                                         </p>
-                                        {readingTime > 0 && (
-                                            <p className="reading-time">
-                                                Estimated reading time: {readingTime} {readingTime === 1 ? 'minute' : 'minutes'}
-                                            </p>
-                                        )}
                                     </div>
                                     
                                     <div className="prose prose-neutral max-w-none">
