@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Office - Prayer & Devotion</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="prefetch" href="devotional.json">
+    <link rel="prefetch" href="office.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #fafafa;
+            --bg-secondary: #ffffff;
+            --text-primary: #262626;
+            --text-secondary: #525252;
+            --text-tertiary: #737373;
+            --border-color: #e5e5e5;
+            --accent-color: #404040;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #1a1a1a;
+                --bg-secondary: #262626;
+                --text-primary: #e5e5e5;
+                --text-secondary: #a3a3a3;
+                --text-tertiary: #737373;
+                --border-color: #404040;
+                --accent-color: #d4d4d4;
+                --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+                --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+                --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+            }
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Cardo', Georgia, serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .controls button, .controls input {
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .controls button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .controls button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .loading-spinner {
+            border-color: rgba(128, 128, 128, 0.2);
+            border-top-color: var(--text-primary);
+        }
+
+        input[type="date"] {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0);
+            cursor: pointer;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            input[type="date"]::-webkit-calendar-picker-indicator {
+                filter: invert(1);
+            }
+        }
+
+        .prose h2 {
+            font-family: 'Cardo', Georgia, serif;
+            font-weight: 700;
+            font-size: 1.4em;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            margin-top: 3rem;
+            color: var(--text-primary);
+        }
+
+        .prose h3 {
+            font-family: 'Cardo', Georgia, serif;
+            font-weight: 700;
+            font-size: 1.1em;
+            font-style: italic;
+            margin-bottom: 0.75rem;
+            margin-top: 0.5rem;
+            color: var(--accent-color);
+            line-height: 1.4;
+        }
+
+        .prose h4 {
+            font-family: 'Cardo', Georgia, serif;
+            font-weight: 700;
+            font-size: 0.95em;
+            margin-bottom: 0.4em;
+            color: var(--accent-color);
+        }
+
+        .prose p {
+            font-family: 'Cardo', Georgia, serif;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: var(--text-primary);
+        }
+
+        .prose em {
+            font-style: italic;
+        }
+
+        .prose strong {
+            font-weight: 700;
+        }
+
+        .prose .verse-reference {
+            color: var(--text-secondary);
+            font-style: italic;
+            font-size: 0.92em;
+            margin-top: 0.5rem;
+        }
+
+        .header-font {
+            font-family: 'Cardo', Georgia, serif;
+        }
+
+        .sticky-controls {
+            background-color: color-mix(in srgb, var(--bg-primary) 70%, transparent);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .content-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .section-divider {
+            border-color: var(--border-color);
+            margin: 3rem 0 2.5rem 0;
+        }
+
+        .nav-button {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .nav-button:hover:not(:disabled) {
+            background-color: var(--accent-color);
+            color: var(--bg-secondary);
+        }
+
+        .nav-button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .offline-badge {
+            background-color: #fbbf24;
+            color: #78350f;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+        }
+
+        .reading-time {
+            color: var(--text-tertiary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+        }
+
+        /* Print Styles */
+        @media print {
+            .controls, header, footer, .nav-button, .sticky-controls {
+                display: none !important;
+            }
+
+            body {
+                background: white;
+                color: black;
+            }
+
+            .prose {
+                font-size: 12pt;
+                line-height: 1.6;
+            }
+
+            .content-card {
+                box-shadow: none;
+                border: none;
+            }
+
+            .section-divider {
+                border-color: #ccc;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Configuration
+        const FONT_SIZES = {
+            small: { h2: '1.2em', h3: '0.95em', h4: '0.8em', p: '0.8rem', lh: '1.6' },
+            medium: { h2: '1.3em', h3: '1.05em', h4: '0.875em', p: '0.9rem', lh: '1.65' },
+            large: { h2: '1.4em', h3: '1.1em', h4: '0.95em', p: '0.95rem', lh: '1.7' }
+        };
+
+        const MONTH_NAMES = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+
+        const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        // Utility functions
+        const getDayOfWeek = (dateStr) => {
+            const date = new Date(dateStr + 'T00:00:00');
+            return DAY_NAMES[date.getDay()];
+        };
+
+        const formatDate = (dateStr) => {
+            const date = new Date(dateStr + 'T00:00:00');
+            return `${getDayOfWeek(dateStr)}, ${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+        };
+
+        const estimateReadingTime = (content) => {
+            if (!content) return 0;
+            const text = JSON.stringify(content);
+            const words = text.split(/\s+/).length;
+            return Math.ceil(words / 200); // Average reading speed: 200 words/min
+        };
+
+        // Local storage utilities
+        const loadFromStorage = (key, defaultValue) => {
+            try {
+                const item = localStorage.getItem(key);
+                return item ? JSON.parse(item) : defaultValue;
+            } catch {
+                return defaultValue;
+            }
+        };
+
+        const saveToStorage = (key, value) => {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch (err) {
+                console.error('Failed to save to localStorage:', err);
+            }
+        };
+
+        function DailyOffice() {
+            const [selectedDate, setSelectedDate] = useState('');
+            const [timeOfDay, setTimeOfDay] = useState('morning');
+            const [fontSize, setFontSize] = useState(() => loadFromStorage('fontSize', 'large'));
+            const [officeContent, setOfficeContent] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [devotionalData, setDevotionalData] = useState(null);
+            const [officeData, setOfficeData] = useState(null);
+            const [isOnline, setIsOnline] = useState(navigator.onLine);
+            const contentRef = useRef(null);
+
+            // Initialize date and time
+            useEffect(() => {
+                const now = new Date();
+                const hours = now.getHours();
+                const dateStr = now.toISOString().split('T')[0];
+                
+                setSelectedDate(dateStr);
+                setTimeOfDay(hours >= 12 ? 'evening' : 'morning');
+                
+                loadFiles();
+
+                // Online/offline detection
+                const handleOnline = () => setIsOnline(true);
+                const handleOffline = () => setIsOnline(false);
+                
+                window.addEventListener('online', handleOnline);
+                window.addEventListener('offline', handleOffline);
+                
+                return () => {
+                    window.removeEventListener('online', handleOnline);
+                    window.removeEventListener('offline', handleOffline);
+                };
+            }, []);
+
+            // Save font size preference
+            useEffect(() => {
+                saveToStorage('fontSize', fontSize);
+            }, [fontSize]);
+
+            const loadFiles = async () => {
+                try {
+                    const [devotionalRes, officeRes] = await Promise.all([
+                        fetch('devotional.json'),
+                        fetch('office.json')
+                    ]);
+                    
+                    if (!devotionalRes.ok || !officeRes.ok) {
+                        throw new Error('Failed to load content files');
+                    }
+                    
+                    const devotionalJson = await devotionalRes.json();
+                    const officeJson = await officeRes.json();
+                    
+                    setDevotionalData(devotionalJson);
+                    setOfficeData(officeJson);
+                } catch (err) {
+                    console.error('Error loading files:', err);
+                    setError({
+                        title: 'Failed to load content files',
+                        message: 'Please check your internet connection and refresh the page.',
+                        technical: err.message
+                    });
+                }
+            };
+
+            const getDevotionalForDate = (data, date, period) => {
+                if (!data || !Array.isArray(data)) return null;
+                
+                const dateObj = new Date(date + 'T00:00:00');
+                let month = dateObj.getMonth() + 1;
+                let day = dateObj.getDate();
+                
+                // Handle Feb 29 for non-leap years
+                if (month === 2 && day === 29) {
+                    day = 28;
+                }
+                
+                const key = `${month}-${day}`;
+                const timeKey = period === 'morning' ? 'am' : 'pm';
+                
+                const entry = data.find(d => d.date === key && d.time === timeKey);
+                
+                if (!entry) return null;
+                
+                return {
+                    title: entry.keyverse || '',
+                    text: entry.body || ''
+                };
+            };
+
+            useEffect(() => {
+                if (!selectedDate || !devotionalData || !officeData) return;
+
+                setLoading(true);
+                setError(null);
+
+                try {
+                    const dayName = getDayOfWeek(selectedDate);
+                    const devotional = getDevotionalForDate(devotionalData, selectedDate, timeOfDay);
+                    
+                    if (!devotional) {
+                        throw new Error('Devotional content not available for this date');
+                    }
+
+                    const newContent = {
+                        thanksgiving: officeData.collects.thanksgiving[timeOfDay],
+                        forgiveness: officeData.collects.forgiveness[timeOfDay],
+                        meditation: officeData.collects.meditation[timeOfDay],
+                        benediction: officeData.collects.benediction[timeOfDay],
+                        dailyFocus: {
+                            title: officeData.dailyFocus[dayName]?.title || dayName,
+                            prayers: officeData.dailyFocus[dayName]?.[timeOfDay] || []
+                        },
+                        devotional: devotional,
+                        dayName: dayName
+                    };
+                    
+                    setOfficeContent(newContent);
+                } catch (err) {
+                    console.error('Error loading content:', err);
+                    setError({
+                        title: 'Unable to load Daily Office',
+                        message: 'The content for this date could not be loaded. Try selecting a different date.',
+                        technical: err.message
+                    });
+                } finally {
+                    setLoading(false);
+                }
+            }, [selectedDate, timeOfDay, devotionalData, officeData]);
+
+            const changeDate = (delta) => {
+                const current = new Date(selectedDate + 'T00:00:00');
+                current.setDate(current.getDate() + delta);
+                setSelectedDate(current.toISOString().split('T')[0]);
+            };
+
+            const renderPrayerItem = (prayer, index) => {
+                if (!prayer) return null;
+                
+                return (
+                    <div key={index} className="mb-6">
+                        <h4 style={{ fontSize: FONT_SIZES[fontSize].h4 }}>{prayer.title}</h4>
+                        <p className="whitespace-pre-line" style={{ fontSize: FONT_SIZES[fontSize].p, lineHeight: FONT_SIZES[fontSize].lh }}>
+                            {prayer.text}
+                        </p>
+                        {prayer.reference && (
+                            <p className="verse-reference" style={{ fontSize: `calc(${FONT_SIZES[fontSize].p} * 0.97)` }}>
+                                ({prayer.reference})
+                            </p>
+                        )}
+                    </div>
+                );
+            };
+
+            const renderCollectSection = (title, prayer) => {
+                if (!prayer) return null;
+                
+                return (
+                    <div className="mb-12">
+                        <h2 style={{ fontSize: FONT_SIZES[fontSize].h2 }}>{title}</h2>
+                        {renderPrayerItem(prayer, 0)}
+                    </div>
+                );
+            };
+
+            const renderDailyFocus = (focusData) => {
+                if (!focusData || !focusData.prayers || focusData.prayers.length === 0) return null;
+                
+                return (
+                    <div className="mb-12">
+                        <h2 style={{ fontSize: FONT_SIZES[fontSize].h2 }}>
+                            {focusData.title} Focus
+                        </h2>
+                        {focusData.prayers.map((prayer, idx) => renderPrayerItem(prayer, idx))}
+                    </div>
+                );
+            };
+
+            const readingTime = officeContent ? estimateReadingTime(officeContent) : 0;
+
+            return (
+                <div className="min-h-screen">
+                    <div className="max-w-4xl mx-auto px-6 lg:px-8 py-12">
+                        <header className="text-center pt-8 pb-12">
+                            <h1 className="header-font text-5xl md:text-6xl font-bold mb-2 tracking-tight">
+                                Daily Office
+                            </h1>
+                            <p className="header-font text-lg italic" style={{ color: 'var(--text-secondary)' }}>
+                                A rhythm of prayer & devotion
+                            </p>
+                            {!isOnline && (
+                                <div className="mt-4 flex justify-center">
+                                    <span className="offline-badge">Offline Mode</span>
+                                </div>
+                            )}
+                        </header>
+
+                        <div className="sticky top-0 z-10 py-6 sticky-controls mb-10">
+                            <div className="flex flex-col gap-4 items-center justify-center controls">
+                                <div className="flex items-center gap-3 w-full md:w-auto">
+                                    <button
+                                        onClick={() => changeDate(-1)}
+                                        className="nav-button px-4 py-2.5 text-base font-medium rounded-lg"
+                                        aria-label="Previous day"
+                                    >
+                                        ← Prev
+                                    </button>
+                                    
+                                    <input
+                                        type="date"
+                                        value={selectedDate}
+                                        onChange={(e) => setSelectedDate(e.target.value)}
+                                        className="flex-1 md:flex-initial px-4 py-2.5 text-base rounded-lg focus:ring-2 focus:ring-offset-2 transition-all font-medium shadow-sm outline-none"
+                                        style={{
+                                            backgroundColor: 'var(--bg-secondary)',
+                                            color: 'var(--text-primary)',
+                                            borderColor: 'var(--border-color)'
+                                        }}
+                                    />
+                                    
+                                    <button
+                                        onClick={() => changeDate(1)}
+                                        className="nav-button px-4 py-2.5 text-base font-medium rounded-lg"
+                                        aria-label="Next day"
+                                    >
+                                        Next →
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 w-full md:w-auto">
+                                    <button
+                                        onClick={() => setTimeOfDay('morning')}
+                                        className="px-6 py-2.5 text-base font-medium rounded-lg transition-all"
+                                        style={{
+                                            backgroundColor: timeOfDay === 'morning' ? 'var(--accent-color)' : 'var(--bg-secondary)',
+                                            color: timeOfDay === 'morning' ? 'var(--bg-secondary)' : 'var(--text-primary)',
+                                            border: `1px solid ${timeOfDay === 'morning' ? 'var(--accent-color)' : 'var(--border-color)'}`,
+                                            boxShadow: timeOfDay === 'morning' ? 'var(--shadow-sm)' : 'none'
+                                        }}
+                                    >
+                                        Morning
+                                    </button>
+                                    <button
+                                        onClick={() => setTimeOfDay('evening')}
+                                        className="px-6 py-2.5 text-base font-medium rounded-lg transition-all"
+                                        style={{
+                                            backgroundColor: timeOfDay === 'evening' ? 'var(--accent-color)' : 'var(--bg-secondary)',
+                                            color: timeOfDay === 'evening' ? 'var(--bg-secondary)' : 'var(--text-primary)',
+                                            border: `1px solid ${timeOfDay === 'evening' ? 'var(--accent-color)' : 'var(--border-color)'}`,
+                                            boxShadow: timeOfDay === 'evening' ? 'var(--shadow-sm)' : 'none'
+                                        }}
+                                    >
+                                        Evening
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2 w-full md:w-auto">
+                                    {['small', 'medium', 'large'].map(size => (
+                                        <button
+                                            key={size}
+                                            onClick={() => setFontSize(size)}
+                                            className="px-5 py-2 text-sm font-medium rounded-lg transition-all capitalize"
+                                            style={{
+                                                backgroundColor: fontSize === size ? 'var(--accent-color)' : 'var(--bg-secondary)',
+                                                color: fontSize === size ? 'var(--bg-secondary)' : 'var(--text-primary)',
+                                                border: `1px solid ${fontSize === size ? 'var(--accent-color)' : 'var(--border-color)'}`,
+                                                boxShadow: fontSize === size ? 'var(--shadow-sm)' : 'none'
+                                            }}
+                                        >
+                                            {size}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <main ref={contentRef} className="pt-4">
+                            {loading && (
+                                <div className="content-card rounded-xl p-16 text-center">
+                                    <div className="loading-spinner rounded-full h-14 w-14 border-4 border-t-4 animate-spin mx-auto mb-6"></div>
+                                    <p className="font-medium text-lg" style={{ color: 'var(--text-secondary)' }}>
+                                        Preparing your Daily Office...
+                                    </p>
+                                </div>
+                            )}
+
+                            {error && (
+                                <div className="content-card rounded-xl p-8" style={{ backgroundColor: '#fef2f2', borderColor: '#fca5a5' }}>
+                                    <p className="font-bold text-red-900 mb-2">{error.title}</p>
+                                    <p className="text-red-700">{error.message}</p>
+                                    {error.technical && (
+                                        <p className="text-red-600 text-sm mt-2 font-mono">{error.technical}</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {!loading && !error && officeContent && (
+                                <div className="content-card rounded-xl p-8 md:p-12 fade-in">
+                                    <div className="text-center mb-12 pb-8" style={{ borderBottom: `1px solid var(--border-color)` }}>
+                                        <h1 className="header-font text-4xl md:text-5xl font-bold mb-2">
+                                            {timeOfDay === 'morning' ? 'Morning' : 'Evening'} Prayer
+                                        </h1>
+                                        <p className="header-font font-medium text-lg italic mb-2" style={{ color: 'var(--text-secondary)' }}>
+                                            {formatDate(selectedDate)}
+                                        </p>
+                                        {readingTime > 0 && (
+                                            <p className="reading-time">
+                                                Estimated reading time: {readingTime} {readingTime === 1 ? 'minute' : 'minutes'}
+                                            </p>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="prose prose-neutral max-w-none">
+                                        {renderCollectSection("Thanksgiving", officeContent.thanksgiving)}
+                                        
+                                        <hr className="section-divider" />
+                                        
+                                        {renderCollectSection("Forgiveness", officeContent.forgiveness)}
+                                        
+                                        <hr className="section-divider" />
+                                        
+                                        {renderCollectSection("Meditation", officeContent.meditation)}
+                                        
+                                        <hr className="section-divider" />
+
+                                        <div className="mb-12">
+                                            <h2 style={{ fontSize: FONT_SIZES[fontSize].h2 }}>
+                                                Spurgeon's Morning & Evening
+                                            </h2>
+                                            <div>
+                                                <h3 style={{ fontSize: FONT_SIZES[fontSize].h3 }}>
+                                                    {officeContent.devotional.title}
+                                                </h3>
+                                                <p className="whitespace-pre-line" style={{ 
+                                                    fontSize: FONT_SIZES[fontSize].p, 
+                                                    lineHeight: FONT_SIZES[fontSize].lh 
+                                                }}>
+                                                    {officeContent.devotional.text}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <hr className="section-divider" />
+                                        
+                                        {renderDailyFocus(officeContent.dailyFocus)}
+                                        
+                                        <hr className="section-divider" />
+                                        
+                                        {renderCollectSection("Benediction", officeContent.benediction)}
+                                    </div>
+                                </div>
+                            )}
+                        </main>
+                        
+                        <footer className="text-center mt-16 text-sm italic" style={{ color: 'var(--text-tertiary)' }}>
+                            <p>Content adapted from Charles Spurgeon's Morning & Evening.</p>
+                            <p className="mt-2">Designed with reverence and simplicity.</p>
+                        </footer>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<DailyOffice />, document.getElementById('root'));
+    </script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
