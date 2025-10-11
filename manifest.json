@@ -1,0 +1,55 @@
+{
+  "name": "Daily Office - Prayer & Devotion",
+  "short_name": "Daily Office",
+  "description": "Complete daily office with prayers, Scripture, and Spurgeon devotional. Supports offline mode and dark theme.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#fafafa",
+  "orientation": "portrait",
+  "categories": ["lifestyle", "productivity", "education"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Morning Prayer",
+      "short_name": "Morning",
+      "description": "Open today's morning prayer",
+      "url": "./index.html?time=morning",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Evening Prayer",
+      "short_name": "Evening",
+      "description": "Open today's evening prayer",
+      "url": "./index.html?time=evening",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
